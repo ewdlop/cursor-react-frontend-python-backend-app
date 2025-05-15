@@ -11,6 +11,9 @@ import os
 from dotenv import load_dotenv
 from database import db, init_db
 from bson import ObjectId
+from collections import Counter
+from textblob import TextBlob
+import jieba.analyse
 
 # Load environment variables
 load_dotenv()
@@ -64,6 +67,7 @@ class TokenData(BaseModel):
 
 class TextAnalysisRequest(BaseModel):
     text: str
+    features: Optional[List[str]] = ["basic"]  # 可选的分析特征列表
 
 class AnalysisResult(BaseModel):
     id: str
@@ -200,13 +204,36 @@ async def analyze_text(
     current_user: User = Depends(get_current_user)
 ):
     doc = nlp(request.text)
+    analysis = {}
     
-    # 进行基本的NLP分析
-    analysis = {
-        "entities": [(ent.text, ent.label_) for ent in doc.ents],
-        "tokens": [token.text for token in doc],
-        "pos_tags": [(token.text, token.pos_) for token in doc],
-    }
+    # 基本分析
+    if "basic" in request.features:
+        analysis["entities"] = [(ent.text, ent.label_) for ent in doc.ents]
+        analysis["tokens"] = [token.text for token in doc]
+        analysis["pos_tags"] = [(token.text, token.pos_) for token in doc]
+    
+    # 情感分析
+    if "sentiment" in request.features:
+        blob = TextBlob(request.text)
+        analysis["sentiment"] = {
+            "polarity": blob.sentiment.polarity,
+            "subjectivity": blob.sentiment.subjectivity
+        }
+    
+    # 关键词提取
+    if "keywords" in request.features:
+        keywords = jieba.analyse.extract_tags(request.text, topK=5, withWeight=True)
+        analysis["keywords"] = [(word, weight) for word, weight in keywords]
+    
+    # 词频统计
+    if "word_freq" in request.features:
+        words = [token.text for token in doc if not token.is_stop and not token.is_punct]
+        word_freq = Counter(words)
+        analysis["word_frequency"] = dict(word_freq.most_common(10))
+    
+    # 依存句法分析
+    if "dependencies" in request.features:
+        analysis["dependencies"] = [(token.text, token.dep_, token.head.text) for token in doc]
     
     # 保存分析结果
     result_dict = {

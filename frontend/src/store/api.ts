@@ -22,6 +22,7 @@ interface LoginResponse {
 
 interface TextAnalysisRequest {
   text: string;
+  features?: string[];
 }
 
 interface TextAnalysisResponse {
@@ -29,6 +30,13 @@ interface TextAnalysisResponse {
     entities: [string, string][];
     tokens: string[];
     pos_tags: [string, string][];
+    sentiment?: {
+      polarity: number;
+      subjectivity: number;
+    };
+    keywords?: [string, number][];
+    word_frequency?: Record<string, number>;
+    dependencies?: [string, string, string][];
   };
 }
 
@@ -84,15 +92,22 @@ export const api = createApi({
     analyzeText: builder.mutation<{
       id: string;
       text: string;
-      result: any;
+      result: TextAnalysisResponse['result'];
       timestamp: string;
       username: string;
-    }, { text: string }>({
+    }, TextAnalysisRequest>({
       query: (data) => ({
         url: '/nlp/analyze',
         method: 'POST',
         body: data,
+        headers: {
+          'Content-Type': 'application/json',
+        },
       }),
+      transformErrorResponse: (response) => {
+        console.error('Analysis error:', response);
+        return response;
+      },
       invalidatesTags: ['Analysis'],
     }),
     getAnalysisHistory: builder.query<Array<{
