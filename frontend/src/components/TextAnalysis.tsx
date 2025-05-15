@@ -64,13 +64,19 @@ const TextAnalysis: React.FC = () => {
         features: selectedFeatures
       }).unwrap();
       
-      console.log('Received response:', response);
+      console.log('Raw API response:', response);
       
+      if (!response.result) {
+        console.error('No result in response:', response);
+        setError('分析结果为空');
+        return;
+      }
+
       // Transform the API response to match the expected types
       const transformedResult: AnalysisResult = {
-        entities: response.result.entities.map(([text, label]) => ({ text, label })),
-        tokens: response.result.tokens,
-        pos_tags: response.result.pos_tags.map(([text, pos]) => ({ text, pos })),
+        entities: response.result.entities?.map(([text, label]) => ({ text, label })) || [],
+        tokens: response.result.tokens || [],
+        pos_tags: response.result.pos_tags?.map(([text, pos]) => ({ text, pos })) || [],
         sentiment: response.result.sentiment,
         keywords: response.result.keywords?.map(([word, weight]) => ({ word, weight })),
         word_frequency: response.result.word_frequency,
@@ -226,7 +232,7 @@ const TextAnalysis: React.FC = () => {
             </div>
           )}
 
-          {selectedFeatures.includes('keywords') && result.keywords && (
+          {selectedFeatures.includes('keywords') && result.keywords && result.keywords.length > 0 && (
             <div className="result-section">
               <h3>关键词提取</h3>
               <ul>
@@ -239,7 +245,7 @@ const TextAnalysis: React.FC = () => {
             </div>
           )}
 
-          {selectedFeatures.includes('word_freq') && result.word_frequency && (
+          {selectedFeatures.includes('word_freq') && result.word_frequency && Object.keys(result.word_frequency).length > 0 && (
             <div className="result-section">
               <h3>词频统计</h3>
               <ul>
@@ -252,7 +258,7 @@ const TextAnalysis: React.FC = () => {
             </div>
           )}
 
-          {selectedFeatures.includes('dependencies') && result.dependencies && (
+          {selectedFeatures.includes('dependencies') && result.dependencies && result.dependencies.length > 0 && (
             <div className="result-section">
               <h3>依存句法分析</h3>
               <ul>

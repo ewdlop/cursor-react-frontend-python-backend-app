@@ -1,11 +1,14 @@
 fastapi==0.104.1
 uvicorn==0.24.0
-python-jose==3.3.0
-passlib==1.7.4
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
-spacy==3.7.2
-zh_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/zh_core_web_sm-3.7.0/zh_core_web_sm-3.7.0-py3-none-any.whl
 motor==3.1.1
 pymongo==4.3.3
+python-dotenv==1.0.0
+spacy==3.7.2
+textblob==0.17.1
+jieba==0.42.1
 pydantic==2.4.2
-python-dotenv==1.0.0 
+requests==2.31.0
+zh_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/zh_core_web_sm-3.7.0/zh_core_web_sm-3.7.0-py3-none-any.whl 
