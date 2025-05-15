@@ -4,23 +4,47 @@ import { useDispatch } from 'react-redux';
 import { setCredentials } from '../store/authSlice';
 import { useNavigate } from 'react-router-dom';
 
+interface ValidationError {
+  loc: string[];
+  msg: string;
+  type: string;
+}
+
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [login] = useLoginMutation();
+  const [error, setError] = useState<string>('');
+  const [login, { isLoading }] = useLoginMutation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!username.trim() || !password.trim()) {
+      setError('请输入用户名和密码');
+      return;
+    }
+
     try {
       const result = await login({ username, password }).unwrap();
       dispatch(setCredentials({ token: result.access_token, username }));
       navigate('/');
     } catch (err: any) {
-      setError(err.data?.detail || '登录失败，请重试');
+      // Handle FastAPI validation errors
+      if (err.data?.detail && Array.isArray(err.data.detail)) {
+        const validationErrors = err.data.detail as ValidationError[];
+        setError(validationErrors.map(error => error.msg).join(', '));
+      } else if (typeof err.data === 'string') {
+        setError(err.data);
+      } else if (err.data?.detail) {
+        setError(err.data.detail);
+      } else if (err.error) {
+        setError(err.error);
+      } else {
+        setError('登录失败，请重试');
+      }
     }
   };
 
@@ -49,7 +73,9 @@ const Login: React.FC = () => {
             required
           />
         </div>
-        <button type="submit">登录</button>
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? '登录中...' : '登录'}
+        </button>
         <div className="form-footer">
           还没有账号？ <a href="/register">立即注册</a>
         </div>

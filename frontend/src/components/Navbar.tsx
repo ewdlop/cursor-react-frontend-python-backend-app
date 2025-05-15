@@ -46,6 +46,11 @@ const Navbar: React.FC = () => {
               </button>
             </div>
             <div className="navbar-item">
+              <button className="nav-button" onClick={() => navigate('/profile')}>
+                个人资料
+              </button>
+            </div>
+            <div className="navbar-item">
               <button className="nav-button logout" onClick={handleLogout}>
                 退出登录
               </button>

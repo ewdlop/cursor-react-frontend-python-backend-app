@@ -6,6 +6,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import TextAnalysis from './components/TextAnalysis';
 import Dashboard from './components/Dashboard';
+import UserProfile from './components/UserProfile';
 import Navbar from './components/Navbar';
 import './App.css';
 
@@ -25,6 +26,10 @@ const App: React.FC = () => {
             <Route 
               path="/analysis" 
               element={isAuthenticated ? <TextAnalysis /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/profile" 
+              element={isAuthenticated ? <UserProfile /> : <Navigate to="/login" />} 
             />
             <Route 
               path="/login" 

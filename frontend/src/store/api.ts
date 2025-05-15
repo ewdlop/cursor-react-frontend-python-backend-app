@@ -33,7 +33,6 @@ interface TextAnalysisResponse {
 }
 
 export const api = createApi({
-  reducerPath: 'api',
   baseQuery: fetchBaseQuery({
     baseUrl: 'http://localhost:8000/api',
     prepareHeaders: (headers, { getState }) => {
@@ -44,14 +43,8 @@ export const api = createApi({
       return headers;
     },
   }),
+  tagTypes: ['Analysis', 'User'],
   endpoints: (builder) => ({
-    register: builder.mutation<User, RegisterRequest>({
-      query: (credentials) => ({
-        url: '/auth/register',
-        method: 'POST',
-        body: credentials,
-      }),
-    }),
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (credentials) => ({
         url: '/auth/login',
@@ -60,16 +53,67 @@ export const api = createApi({
           username: credentials.username,
           password: credentials.password,
         }),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
       }),
     }),
-    analyzeText: builder.mutation<TextAnalysisResponse, TextAnalysisRequest>({
+    register: builder.mutation<{ username: string }, RegisterRequest>({
+      query: (credentials) => ({
+        url: '/auth/register',
+        method: 'POST',
+        body: credentials,
+      }),
+    }),
+    changePassword: builder.mutation<{ message: string }, { new_password: string }>({
+      query: (data) => ({
+        url: '/auth/change-password',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
+    getUserProfile: builder.query<{ username: string; created_at: string }, void>({
+      query: () => '/users/profile',
+      providesTags: ['User'],
+    }),
+    getUserStats: builder.query<{ today: number; week: number; total: number }, void>({
+      query: () => '/users/stats',
+      providesTags: ['Analysis'],
+    }),
+    analyzeText: builder.mutation<{
+      id: string;
+      text: string;
+      result: any;
+      timestamp: string;
+      username: string;
+    }, { text: string }>({
       query: (data) => ({
         url: '/nlp/analyze',
         method: 'POST',
         body: data,
       }),
+      invalidatesTags: ['Analysis'],
+    }),
+    getAnalysisHistory: builder.query<Array<{
+      id: string;
+      text: string;
+      result: any;
+      timestamp: string;
+      username: string;
+    }>, void>({
+      query: () => '/nlp/history',
+      providesTags: ['Analysis'],
     }),
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation, useAnalyzeTextMutation } = api; 
+export const {
+  useLoginMutation,
+  useRegisterMutation,
+  useChangePasswordMutation,
+  useGetUserProfileQuery,
+  useGetUserStatsQuery,
+  useAnalyzeTextMutation,
+  useGetAnalysisHistoryQuery,
+} = api; 
