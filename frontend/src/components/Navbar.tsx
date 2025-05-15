@@ -37,6 +37,11 @@ const Navbar: React.FC = () => {
             </div>
             <div className="navbar-item">
               <button className="nav-button" onClick={() => navigate('/')}>
+                仪表板
+              </button>
+            </div>
+            <div className="navbar-item">
+              <button className="nav-button" onClick={() => navigate('/analysis')}>
                 文本分析
               </button>
             </div>

@@ -5,6 +5,7 @@ import { RootState } from './store';
 import Login from './components/Login';
 import Register from './components/Register';
 import TextAnalysis from './components/TextAnalysis';
+import Dashboard from './components/Dashboard';
 import Navbar from './components/Navbar';
 import './App.css';
 
@@ -19,6 +20,10 @@ const App: React.FC = () => {
           <Routes>
             <Route 
               path="/" 
+              element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/analysis" 
               element={isAuthenticated ? <TextAnalysis /> : <Navigate to="/login" />} 
             />
             <Route 
