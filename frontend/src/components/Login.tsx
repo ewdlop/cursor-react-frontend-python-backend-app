@@ -17,7 +17,7 @@ const Login: React.FC = () => {
     setError('');
     try {
       const result = await login({ username, password }).unwrap();
-      dispatch(setCredentials({ token: result.access_token }));
+      dispatch(setCredentials({ token: result.access_token, username }));
       navigate('/');
     } catch (err: any) {
       setError(err.data?.detail || '登录失败，请重试');

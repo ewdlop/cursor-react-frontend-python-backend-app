@@ -5,31 +5,35 @@ import { RootState } from './store';
 import Login from './components/Login';
 import Register from './components/Register';
 import TextAnalysis from './components/TextAnalysis';
+import Navbar from './components/Navbar';
 import './App.css';
 
-function App() {
+const App: React.FC = () => {
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
   return (
     <Router>
-      <div className="App">
-        <Routes>
-          <Route
-            path="/login"
-            element={!isAuthenticated ? <Login /> : <Navigate to="/" />}
-          />
-          <Route
-            path="/register"
-            element={!isAuthenticated ? <Register /> : <Navigate to="/" />}
-          />
-          <Route
-            path="/"
-            element={isAuthenticated ? <TextAnalysis /> : <Navigate to="/login" />}
-          />
-        </Routes>
+      <div className="app">
+        <Navbar />
+        <div className="container">
+          <Routes>
+            <Route 
+              path="/" 
+              element={isAuthenticated ? <TextAnalysis /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/login" 
+              element={!isAuthenticated ? <Login /> : <Navigate to="/" />} 
+            />
+            <Route 
+              path="/register" 
+              element={!isAuthenticated ? <Register /> : <Navigate to="/" />} 
+            />
+          </Routes>
+        </div>
       </div>
     </Router>
   );
-}
+};
 
 export default App;
