@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
+import '../styles/components.css';
 
 const Navigation: React.FC = () => {
   const location = useLocation();
@@ -34,6 +35,12 @@ const Navigation: React.FC = () => {
                 className={location.pathname === '/image' ? 'active' : ''}
               >
                 图像处理
+              </Link>
+              <Link 
+                to="/image-generation" 
+                className={location.pathname === '/image-generation' ? 'active' : ''}
+              >
+                AI 绘画
               </Link>
               <div className="nav-user">
                 <span className="username">欢迎, {username}</span>

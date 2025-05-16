@@ -5,8 +5,10 @@ import { RootState } from './store';
 import Navigation from './components/Navigation';
 import TextAnalysis from './components/TextAnalysis';
 import ImageProcessing from './components/ImageProcessing';
+import ImageGeneration from './components/ImageGeneration';
 import Login from './components/Login';
 import Register from './components/Register';
+import UserProfile from './components/UserProfile';
 import './styles/components.css';
 
 const App: React.FC = () => {
@@ -22,6 +24,8 @@ const App: React.FC = () => {
             <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/nlp" />} />
             <Route path="/nlp" element={isAuthenticated ? <TextAnalysis /> : <Navigate to="/login" />} />
             <Route path="/image" element={isAuthenticated ? <ImageProcessing /> : <Navigate to="/login" />} />
+            <Route path="/image-generation" element={isAuthenticated ? <ImageGeneration /> : <Navigate to="/login" />} />
+            <Route path="/profile" element={isAuthenticated ? <UserProfile /> : <Navigate to="/login" />} />
             <Route path="/" element={<Navigate to={isAuthenticated ? "/nlp" : "/login"} />} />
           </Routes>
         </main>

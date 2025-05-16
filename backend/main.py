@@ -708,9 +708,10 @@ def encode_image(image: Image.Image) -> str:
         background.paste(image, mask=image.split()[3])
         image = background
     
-    buffered = io.BytesIO()
-    image.save(buffered, format="JPEG")
-    return base64.b64encode(buffered.getvalue()).decode()
+    # Convert to numpy array and then to bytes
+    img_array = np.array(image)
+    _, buffer = cv2.imencode('.jpg', cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR))
+    return base64.b64encode(buffer).decode()
 
 # Get image processing history
 @app.get("/api/image/history", response_model=List[ImageProcessingResult])
