@@ -59,13 +59,41 @@ interface AnalysisResult {
     trigrams?: [string, string, string][];
     word_frequency_nltk?: Record<string, number>;
     text_stats?: TextStats;
+    summary?: string[];
+    language?: string;
+    similarity?: {
+      cosine_similarity: number;
+      edit_distance: number;
+    };
+    readability?: {
+      avg_sentence_length: number;
+      unique_word_ratio: number;
+      sentence_count: number;
+      word_count: number;
+    };
+    entity_relations?: Array<{
+      entity1: string;
+      entity2: string;
+      relation: string;
+    }>;
+    text_classification?: {
+      category: string;
+      confidence: number;
+    };
   };
   timestamp: string;
   username: string;
 }
 
+interface TextAnalysisRequest {
+  text: string;
+  features: string[];
+  compare_text?: string;
+}
+
 const TextAnalysis: React.FC = () => {
   const [text, setText] = useState('');
+  const [compareText, setCompareText] = useState('');
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string>('');
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(['basic']);
@@ -85,7 +113,8 @@ const TextAnalysis: React.FC = () => {
     try {
       const response = await analyzeText({
         text,
-        features: selectedFeatures
+        features: selectedFeatures,
+        compare_text: compareText
       }).unwrap();
       setResult(response);
     } catch (err: any) {
@@ -125,6 +154,19 @@ const TextAnalysis: React.FC = () => {
             disabled={isLoading}
           />
         </div>
+
+        {selectedFeatures.includes('similarity') && (
+          <div className="form-group">
+            <label htmlFor="compare-text">比较文本：</label>
+            <textarea
+              id="compare-text"
+              value={compareText}
+              onChange={(e) => setCompareText(e.target.value)}
+              placeholder="请输入要比较的文本..."
+              disabled={isLoading}
+            />
+          </div>
+        )}
         
         <div className="feature-selection">
           <h3>选择分析特征：</h3>
@@ -176,6 +218,54 @@ const TextAnalysis: React.FC = () => {
               disabled={isLoading}
             >
               NLTK分析
+            </button>
+            <button
+              type="button"
+              className={`feature-button ${selectedFeatures.includes('summarization') ? 'active' : ''}`}
+              onClick={() => handleFeatureToggle('summarization')}
+              disabled={isLoading}
+            >
+              文本摘要
+            </button>
+            <button
+              type="button"
+              className={`feature-button ${selectedFeatures.includes('language') ? 'active' : ''}`}
+              onClick={() => handleFeatureToggle('language')}
+              disabled={isLoading}
+            >
+              语言检测
+            </button>
+            <button
+              type="button"
+              className={`feature-button ${selectedFeatures.includes('similarity') ? 'active' : ''}`}
+              onClick={() => handleFeatureToggle('similarity')}
+              disabled={isLoading}
+            >
+              文本相似度
+            </button>
+            <button
+              type="button"
+              className={`feature-button ${selectedFeatures.includes('readability') ? 'active' : ''}`}
+              onClick={() => handleFeatureToggle('readability')}
+              disabled={isLoading}
+            >
+              可读性分析
+            </button>
+            <button
+              type="button"
+              className={`feature-button ${selectedFeatures.includes('entity_relations') ? 'active' : ''}`}
+              onClick={() => handleFeatureToggle('entity_relations')}
+              disabled={isLoading}
+            >
+              实体关系
+            </button>
+            <button
+              type="button"
+              className={`feature-button ${selectedFeatures.includes('text_classification') ? 'active' : ''}`}
+              onClick={() => handleFeatureToggle('text_classification')}
+              disabled={isLoading}
+            >
+              文本分类
             </button>
           </div>
         </div>
@@ -326,6 +416,65 @@ const TextAnalysis: React.FC = () => {
                   <li key={index}>{word}: {freq}</li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {result.result.summary && (
+            <div className="result-section">
+              <h4>文本摘要：</h4>
+              <ol>
+                {result.result.summary.map((sentence, index) => (
+                  <li key={index}>{sentence}</li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {result.result.language && (
+            <div className="result-section">
+              <h4>语言检测：</h4>
+              <p>检测到的语言：{result.result.language}</p>
+            </div>
+          )}
+
+          {result.result.similarity && (
+            <div className="result-section">
+              <h4>文本相似度：</h4>
+              <p>余弦相似度：{(result.result.similarity.cosine_similarity * 100).toFixed(2)}%</p>
+              <p>编辑距离：{result.result.similarity.edit_distance}</p>
+            </div>
+          )}
+
+          {result.result.readability && (
+            <div className="result-section">
+              <h4>可读性分析：</h4>
+              <ul>
+                <li>平均句子长度：{result.result.readability.avg_sentence_length.toFixed(2)}</li>
+                <li>唯一词比例：{(result.result.readability.unique_word_ratio * 100).toFixed(2)}%</li>
+                <li>句子数量：{result.result.readability.sentence_count}</li>
+                <li>词数：{result.result.readability.word_count}</li>
+              </ul>
+            </div>
+          )}
+
+          {result.result.entity_relations && (
+            <div className="result-section">
+              <h4>实体关系：</h4>
+              <ul>
+                {result.result.entity_relations.map((relation, index) => (
+                  <li key={index}>
+                    {relation.entity1} {'--'}{relation.relation}{'-->'} {relation.entity2}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.result.text_classification && (
+            <div className="result-section">
+              <h4>文本分类：</h4>
+              <p>分类：{result.result.text_classification.category}</p>
+              <p>置信度：{(result.result.text_classification.confidence * 100).toFixed(2)}%</p>
             </div>
           )}
         </div>

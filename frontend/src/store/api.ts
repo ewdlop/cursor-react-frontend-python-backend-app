@@ -22,7 +22,8 @@ interface LoginResponse {
 
 interface TextAnalysisRequest {
   text: string;
-  features?: string[];
+  features: string[];
+  compare_text?: string;
 }
 
 interface TextAnalysisResponse {

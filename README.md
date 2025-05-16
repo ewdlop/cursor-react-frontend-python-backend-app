@@ -22,6 +22,27 @@ A full-stack application for Chinese text analysis with various NLP features. / 
   - Syntactic Dependencies / 句法依存关系
   - Head-Dependent Relations / 主从关系
 
+### Advanced NLP Features / 高级NLP功能
+- Text Summarization / 文本摘要
+  - TF-IDF based extraction / 基于TF-IDF的摘要提取
+  - Key sentence selection / 关键句子选择
+- Language Detection / 语言检测
+  - Multi-language support / 多语言支持
+  - Language confidence / 语言置信度
+- Text Similarity Analysis / 文本相似度分析
+  - Cosine similarity / 余弦相似度
+  - Edit distance / 编辑距离
+- Readability Analysis / 可读性分析
+  - Average sentence length / 平均句子长度
+  - Unique word ratio / 唯一词比例
+  - Text complexity metrics / 文本复杂度指标
+- Entity Relation Analysis / 实体关系分析
+  - Entity pairs / 实体对
+  - Relation types / 关系类型
+- Text Classification / 文本分类
+  - Sentiment-based categories / 基于情感的分类
+  - Classification confidence / 分类置信度
+
 ### NLTK Features / NLTK功能
 - Text Statistics / 文本统计
   - Sentence Count / 句子数量
@@ -62,6 +83,9 @@ A full-stack application for Chinese text analysis with various NLP features. / 
 - TextBlob
 - jieba
 - NLTK
+- scikit-learn
+- langdetect
+- numpy
 
 ## Setup / 安装设置
 

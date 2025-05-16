@@ -20,12 +20,19 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.probability import FreqDist
 from nltk.util import ngrams
+from nltk.translate.bleu_score import sentence_bleu
+from nltk.metrics.distance import edit_distance
+from langdetect import detect, LangDetectException
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 # Download required NLTK data
 nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('wordnet')
 nltk.download('averaged_perceptron_tagger')
+nltk.download('stopwords')
 
 # Load environment variables
 load_dotenv()
@@ -80,6 +87,7 @@ class TokenData(BaseModel):
 class TextAnalysisRequest(BaseModel):
     text: str
     features: Optional[List[str]] = ["basic"]  # 可选的分析特征列表
+    compare_text: Optional[str] = None  # 用于文本比较的第二个文本
 
 class AnalysisResult(BaseModel):
     id: str
@@ -284,6 +292,83 @@ async def analyze_text(
             "word_count": len(tokens),
             "unique_words": len(set(tokens)),
             "avg_sentence_length": len(tokens) / len(sentences) if sentences else 0
+        }
+    
+    # 新增功能：文本摘要
+    if "summarization" in request.features:
+        sentences = sent_tokenize(request.text)
+        # 使用TF-IDF进行简单的文本摘要
+        vectorizer = TfidfVectorizer(stop_words='english')
+        tfidf_matrix = vectorizer.fit_transform(sentences)
+        sentence_scores = tfidf_matrix.sum(axis=1).A1
+        top_sentences = np.argsort(sentence_scores)[-3:]  # 选择得分最高的3个句子
+        summary = [sentences[i] for i in sorted(top_sentences)]
+        analysis["summary"] = summary
+    
+    # 新增功能：语言检测
+    if "language" in request.features:
+        try:
+            lang = detect(request.text)
+            analysis["language"] = lang
+        except LangDetectException:
+            analysis["language"] = "unknown"
+    
+    # 新增功能：文本相似度分析
+    if "similarity" in request.features and request.compare_text:
+        # 使用TF-IDF和余弦相似度
+        vectorizer = TfidfVectorizer()
+        tfidf_matrix = vectorizer.fit_transform([request.text, request.compare_text])
+        similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+        analysis["similarity"] = {
+            "cosine_similarity": float(similarity),
+            "edit_distance": edit_distance(request.text, request.compare_text)
+        }
+    
+    # 新增功能：文本可读性分析
+    if "readability" in request.features:
+        sentences = sent_tokenize(request.text)
+        words = word_tokenize(request.text)
+        avg_sentence_length = len(words) / len(sentences)
+        unique_words = len(set(words))
+        analysis["readability"] = {
+            "avg_sentence_length": avg_sentence_length,
+            "unique_word_ratio": unique_words / len(words),
+            "sentence_count": len(sentences),
+            "word_count": len(words)
+        }
+    
+    # 新增功能：命名实体关系分析
+    if "entity_relations" in request.features:
+        entity_relations = []
+        for ent1 in doc.ents:
+            for ent2 in doc.ents:
+                if ent1 != ent2:
+                    # 检查实体间是否存在依存关系
+                    for token in doc:
+                        if token.text == ent1.text:
+                            for child in token.children:
+                                if child.text == ent2.text:
+                                    entity_relations.append({
+                                        "entity1": ent1.text,
+                                        "entity2": ent2.text,
+                                        "relation": child.dep_
+                                    })
+        analysis["entity_relations"] = entity_relations
+    
+    # 新增功能：文本分类（简单实现）
+    if "text_classification" in request.features:
+        # 使用TextBlob进行简单的情感分类
+        blob = TextBlob(request.text)
+        sentiment = blob.sentiment.polarity
+        if sentiment > 0.3:
+            category = "positive"
+        elif sentiment < -0.3:
+            category = "negative"
+        else:
+            category = "neutral"
+        analysis["text_classification"] = {
+            "category": category,
+            "confidence": abs(sentiment)
         }
     
     # 保存分析结果
