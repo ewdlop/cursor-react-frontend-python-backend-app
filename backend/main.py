@@ -32,9 +32,11 @@ from PIL import Image, ImageEnhance
 import io
 import torch
 from torchvision import transforms
-from transformers import AutoImageProcessor, AutoModelForImageClassification
+from transformers import AutoImageProcessor, AutoModelForImageClassification, AutoModelForCausalLM, AutoTokenizer
 import base64
 from diffusers import StableDiffusionPipeline
+import uuid
+from models import User, UserInDB, UserCreate, UserUpdate, Token, TokenData, TextGenerationRequest, TextGenerationResult
 
 # Download required NLTK data
 nltk.download('punkt')
@@ -69,6 +71,19 @@ app.add_middleware(
 # 密码加密
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Load text generation model
+try:
+    print("Loading text generation model...")
+    text_model = AutoModelForCausalLM.from_pretrained("THUDM/chatglm2-6b", trust_remote_code=True)
+    text_tokenizer = AutoTokenizer.from_pretrained("THUDM/chatglm2-6b", trust_remote_code=True)
+    if torch.cuda.is_available():
+        text_model = text_model.cuda()
+    print("Text generation model loaded successfully")
+except Exception as e:
+    print(f"Error loading text generation model: {e}")
+    text_model = None
+    text_tokenizer = None
 
 # 模型定义
 class User(BaseModel):
@@ -793,6 +808,66 @@ async def get_generation_history(
     ).sort("timestamp", -1).limit(limit).to_list(length=limit)
     
     return [ImageGenerationResult(**{**result, "id": str(result["_id"])}) for result in results]
+
+@app.post("/api/text/generate", response_model=TextGenerationResult)
+async def generate_text(
+    request: TextGenerationRequest,
+    current_user: User = Depends(get_current_user)
+):
+    if not text_model or not text_tokenizer:
+        raise HTTPException(status_code=500, detail="Text generation model not loaded")
+
+    try:
+        # Generate text
+        inputs = text_tokenizer(request.prompt, return_tensors="pt")
+        if torch.cuda.is_available():
+            inputs = inputs.to("cuda")
+        
+        outputs = text_model.generate(
+            **inputs,
+            max_length=request.max_length,
+            temperature=request.temperature,
+            top_p=request.top_p,
+            num_return_sequences=request.num_return_sequences,
+            pad_token_id=text_tokenizer.pad_token_id,
+            eos_token_id=text_tokenizer.eos_token_id
+        )
+        
+        generated_text = text_tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
+        # Create result
+        result_dict = {
+            "id": str(uuid.uuid4()),
+            "prompt": request.prompt,
+            "generated_text": generated_text,
+            "timestamp": datetime.now().isoformat(),
+            "username": current_user.username,
+            "settings": {
+                "max_length": request.max_length,
+                "temperature": request.temperature,
+                "top_p": request.top_p,
+                "num_return_sequences": request.num_return_sequences
+            }
+        }
+        
+        # Save to database
+        await db.text_generations.insert_one(result_dict)
+        
+        return TextGenerationResult(**result_dict)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/text/generation-history", response_model=List[TextGenerationResult])
+async def get_text_generation_history(
+    current_user: User = Depends(get_current_user),
+    limit: int = 10
+):
+    results = await db.text_generations.find(
+        {"username": current_user.username}
+    ).sort("timestamp", -1).limit(limit).to_list(length=limit)
+    
+    return [TextGenerationResult(**{**result, "id": str(result["_id"])}) for result in results]
 
 @app.on_event("startup")
 async def startup_db_client():
