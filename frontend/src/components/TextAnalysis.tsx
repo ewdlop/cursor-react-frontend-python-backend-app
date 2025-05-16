@@ -270,7 +270,7 @@ const TextAnalysis: React.FC = () => {
           </div>
         </div>
 
-        <button type="submit" disabled={isLoading || !text.trim()}>
+        <button type="submit" disabled={isLoading || !text.trim()} className="submit-button">
           {isLoading ? '分析中...' : '分析文本'}
         </button>
       </form>
