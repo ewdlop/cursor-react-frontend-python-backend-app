@@ -76,6 +76,7 @@ spacy-legacy==3.0.12
 spacy-loggers==1.0.5
 spacy-pkuseg==0.0.33
 srsly==2.5.1
+SQLAlchemy==2.0.27
 starlette==0.27.0
 sympy==1.14.0
 textblob==0.17.1

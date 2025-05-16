@@ -9,6 +9,7 @@ import ImageGeneration from './components/ImageGeneration';
 import Login from './components/Login';
 import Register from './components/Register';
 import UserProfile from './components/UserProfile';
+import TextGeneration from './components/TextGeneration';
 import './styles/components.css';
 
 const App: React.FC = () => {
@@ -26,6 +27,7 @@ const App: React.FC = () => {
             <Route path="/image" element={isAuthenticated ? <ImageProcessing /> : <Navigate to="/login" />} />
             <Route path="/image-generation" element={isAuthenticated ? <ImageGeneration /> : <Navigate to="/login" />} />
             <Route path="/profile" element={isAuthenticated ? <UserProfile /> : <Navigate to="/login" />} />
+            <Route path="/text-generation" element={isAuthenticated ? <TextGeneration /> : <Navigate to="/login" />} />
             <Route path="/" element={<Navigate to={isAuthenticated ? "/nlp" : "/login"} />} />
           </Routes>
         </main>

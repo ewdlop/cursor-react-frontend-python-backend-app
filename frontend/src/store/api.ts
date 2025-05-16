@@ -102,6 +102,28 @@ interface ImageGenerationResult {
   username: string;
 }
 
+export interface TextGenerationRequest {
+  prompt: string;
+  max_length: number;
+  temperature: number;
+  top_p: number;
+  num_return_sequences: number;
+}
+
+export interface TextGenerationResult {
+  id: string;
+  prompt: string;
+  generated_text: string;
+  timestamp: string;
+  username: string;
+  settings: {
+    max_length: number;
+    temperature: number;
+    top_p: number;
+    num_return_sequences: number;
+  };
+}
+
 export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: 'http://localhost:8000/api',
@@ -113,7 +135,7 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Analysis', 'User', 'Image'],
+  tagTypes: ['Analysis', 'User', 'Image', 'Text'],
   endpoints: (builder) => ({
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (credentials) => ({
@@ -212,6 +234,18 @@ export const api = createApi({
       query: () => '/image/generation-history',
       providesTags: ['Image'],
     }),
+    generateText: builder.mutation<TextGenerationResult, TextGenerationRequest>({
+      query: (data) => ({
+        url: '/text/generate',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Text'],
+    }),
+    getTextGenerationHistory: builder.query<TextGenerationResult[], void>({
+      query: () => '/text/generation-history',
+      providesTags: ['Text'],
+    }),
   }),
 });
 
@@ -227,4 +261,6 @@ export const {
   useGetImageHistoryQuery,
   useGenerateImageMutation,
   useGetGenerationHistoryQuery,
+  useGenerateTextMutation,
+  useGetTextGenerationHistoryQuery,
 } = api; 
