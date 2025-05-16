@@ -36,7 +36,7 @@ from transformers import AutoImageProcessor, AutoModelForImageClassification, Au
 import base64
 from diffusers import StableDiffusionPipeline
 import uuid
-from models import User, UserInDB, UserCreate, UserUpdate, Token, TokenData, TextGenerationRequest, TextGenerationResult
+from my_models import User, UserInDB, UserCreate, UserUpdate, Token, TokenData, TextGenerationRequest, TextGenerationResult
 
 # Download required NLTK data
 nltk.download('punkt')
@@ -75,8 +75,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # Load text generation model
 try:
     print("Loading text generation model...")
-    text_model = AutoModelForCausalLM.from_pretrained("THUDM/chatglm2-6b", trust_remote_code=True)
-    text_tokenizer = AutoTokenizer.from_pretrained("THUDM/chatglm2-6b", trust_remote_code=True)
+    text_model = AutoModelForCausalLM.from_pretrained("gpt2")
+    text_tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    # Set padding token to EOS token
+    text_tokenizer.pad_token = text_tokenizer.eos_token
+    text_model.config.pad_token_id = text_model.config.eos_token_id
     if torch.cuda.is_available():
         text_model = text_model.cuda()
     print("Text generation model loaded successfully")
@@ -819,7 +822,7 @@ async def generate_text(
 
     try:
         # Generate text
-        inputs = text_tokenizer(request.prompt, return_tensors="pt")
+        inputs = text_tokenizer(request.prompt, return_tensors="pt", padding=True, truncation=True, max_length=512)
         if torch.cuda.is_available():
             inputs = inputs.to("cuda")
         
@@ -829,8 +832,9 @@ async def generate_text(
             temperature=request.temperature,
             top_p=request.top_p,
             num_return_sequences=request.num_return_sequences,
-            pad_token_id=text_tokenizer.pad_token_id,
-            eos_token_id=text_tokenizer.eos_token_id
+            pad_token_id=text_tokenizer.eos_token_id,
+            do_sample=True,
+            no_repeat_ngram_size=2
         )
         
         generated_text = text_tokenizer.decode(outputs[0], skip_special_tokens=True)

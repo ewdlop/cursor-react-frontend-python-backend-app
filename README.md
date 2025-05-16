@@ -1,6 +1,6 @@
 # Text Analysis and Image Processing Application / 文本分析与图像处理应用
 
-A full-stack application based on FastAPI and React that provides various NLP and computer vision features. / 一个基于FastAPI和React的文本分析与图像处理应用，提供多种NLP和计算机视觉功能。
+A full-stack application based on FastAPI and React that provides various NLP, computer vision, and AI generation features. / 一个基于FastAPI和React的文本分析、图像处理和AI生成应用，提供多种NLP、计算机视觉和AI生成功能。
 
 ## Features / 功能特点
 
@@ -27,23 +27,45 @@ A full-stack application based on FastAPI and React that provides various NLP an
   - Show area and perimeter for each segment / 每个区域显示面积和周长信息
 - Style Transfer / 风格迁移：Apply artistic style filters / 应用艺术风格滤镜
 
+### Image Generation Features / 图像生成功能
+- AI Image Generation / AI图像生成：Using Stable Diffusion model / 使用Stable Diffusion模型
+- Customizable Parameters / 可自定义参数：
+  - Number of steps / 步数
+  - Guidance scale / 引导系数
+  - Image dimensions / 图像尺寸
+- Negative Prompt Support / 负面提示词支持：Specify unwanted elements / 指定不需要的元素
+- Generation History / 生成历史：Track all generated images / 追踪所有生成的图像
+
+### Text Generation Features / 文本生成功能
+- AI Text Generation / AI文本生成：Using GPT-2 model / 使用GPT-2模型
+- Customizable Parameters / 可自定义参数：
+  - Maximum length / 最大长度
+  - Temperature / 温度
+  - Top-p sampling / Top-p采样
+  - Number of sequences / 序列数量
+- Generation History / 生成历史：Track all generated texts / 追踪所有生成的文本
+
 ## Tech Stack / 技术栈
 
 ### Backend / 后端
 - FastAPI
 - MongoDB
 - PyTorch
+- Transformers
 - OpenCV
 - spaCy
 - NLTK
 - scikit-learn
 - YOLOv5
+- Stable Diffusion
+- GPT-2
 
 ### Frontend / 前端
 - React
 - Redux Toolkit
 - RTK Query
 - TypeScript
+- Material-UI
 - CSS3
 
 ## Installation / 安装说明
@@ -95,6 +117,8 @@ Visit `http://localhost:8000/docs` after starting the backend server to view the
 - POST `/api/auth/register` - User registration / 用户注册
 - POST `/api/auth/login` - User login / 用户登录
 - POST `/api/auth/change-password` - Change password / 修改密码
+- GET `/api/users/profile` - Get user profile / 获取用户资料
+- GET `/api/users/stats` - Get user statistics / 获取用户统计信息
 
 #### Text Analysis / 文本分析
 - POST `/api/nlp/analyze` - Text analysis / 文本分析
@@ -103,6 +127,14 @@ Visit `http://localhost:8000/docs` after starting the backend server to view the
 #### Image Processing / 图像处理
 - POST `/api/image/process` - Image processing / 图像处理
 - GET `/api/image/history` - Get processing history / 获取处理历史
+
+#### Image Generation / 图像生成
+- POST `/api/image/generate` - Generate image / 生成图像
+- GET `/api/image/generation-history` - Get generation history / 获取生成历史
+
+#### Text Generation / 文本生成
+- POST `/api/text/generate` - Generate text / 生成文本
+- GET `/api/text/generation-history` - Get generation history / 获取生成历史
 
 ## Usage Guide / 使用说明
 
@@ -116,19 +148,31 @@ Visit `http://localhost:8000/docs` after starting the backend server to view the
 ### Image Processing / 图像处理
 1. Log in to the system / 登录系统
 2. Upload an image in the image processing page / 在图像处理页面上传图片
-3. Select desired processing features / 选择需要的处理特征：
-   - Image Enhancement / 图像增强：Improve image quality / 提升图像质量
-   - Object Detection / 目标检测：Detect objects in the image / 识别图像中的物体
-   - Image Segmentation / 图像分割：Analyze main regions / 分析图像中的主要区域
-   - Style Transfer / 风格迁移：Apply artistic effects / 应用艺术效果
+3. Select desired processing features / 选择需要的处理特征
 4. Click "Start Processing" button / 点击"开始处理"按钮
 5. View processing results and history / 查看处理结果和历史记录
+
+### Image Generation / 图像生成
+1. Log in to the system / 登录系统
+2. Enter prompt in the image generation page / 在图像生成页面输入提示词
+3. Adjust generation parameters / 调整生成参数
+4. Click "Generate Image" button / 点击"生成图像"按钮
+5. View generated image and history / 查看生成的图像和历史记录
+
+### Text Generation / 文本生成
+1. Log in to the system / 登录系统
+2. Enter prompt in the text generation page / 在文本生成页面输入提示词
+3. Adjust generation parameters / 调整生成参数
+4. Click "Generate Text" button / 点击"生成文本"按钮
+5. View generated text and history / 查看生成的文本和历史记录
 
 ## Notes / 注意事项
 
 - Image processing features require significant computational resources, processing large images may take longer / 图像处理功能需要较大的计算资源，处理大图片时可能需要较长时间
 - Object detection uses YOLOv5 model, supporting detection of 80 common objects / 目标检测功能使用YOLOv5模型，支持80种常见物体的检测
 - Image segmentation automatically identifies main regions and sorts them by area / 图像分割功能会自动识别图像中的主要区域，并按面积大小排序
+- Image generation uses Stable Diffusion model, which requires GPU for optimal performance / 图像生成功能使用Stable Diffusion模型，需要GPU以获得最佳性能
+- Text generation uses GPT-2 model, which provides fast and efficient text generation / 文本生成功能使用GPT-2模型，提供快速高效的文本生成
 - All processing results are saved in the database and can be viewed in history / 所有处理结果都会保存在数据库中，可以随时查看历史记录
 
 ## Contributing / 贡献指南
