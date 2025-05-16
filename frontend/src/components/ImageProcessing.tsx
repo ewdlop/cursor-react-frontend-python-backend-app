@@ -51,10 +51,11 @@ const ImageProcessing: React.FC = () => {
       // Handle successful processing
       console.log('Processing result:', result);
       
-      // You can add state management for the results here
-      // For example, storing the processed images in state
+      // Clear any previous errors
+      setError('');
       
     } catch (err: any) {
+      console.error('Processing error:', err);
       setError(err.data?.detail || '处理失败，请重试');
     }
   };
@@ -154,13 +155,16 @@ const ImageProcessing: React.FC = () => {
                     <img src={item.result.enhanced} alt="Enhanced" className="result-image" />
                   </div>
                 )}
-                {item.result.detections && (
+                {item.result.detections && item.result.detections.length > 0 && (
                   <div className="result-item">
                     <h4>检测结果</h4>
-                    <ul>
+                    <ul className="detection-list">
                       {item.result.detections.map((detection, index) => (
-                        <li key={index}>
-                          {detection.class} ({Math.round(detection.confidence * 100)}%)
+                        <li key={index} className="detection-item">
+                          <span className="detection-class">{detection.class}</span>
+                          <span className="detection-confidence">
+                            {Math.round(detection.confidence * 100)}%
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -169,8 +173,40 @@ const ImageProcessing: React.FC = () => {
                 {item.result.segmentation && (
                   <div className="result-item">
                     <h4>分割结果</h4>
-                    <p>分割数量: {item.result.segmentation.segments}</p>
-                    <img src={item.result.segmentation.segmented} alt="Segmented" className="result-image" />
+                    <div className="segmentation-results">
+                      <div className="segmentation-main">
+                        <div className="segmentation-image">
+                          <h5>分割图像</h5>
+                          <img src={item.result.segmentation.segmented} alt="Segmented" className="result-image" />
+                        </div>
+                        <div className="segmentation-mask">
+                          <h5>分割掩码</h5>
+                          <img src={item.result.segmentation.mask} alt="Mask" className="result-image" />
+                        </div>
+                      </div>
+                      
+                      <div className="segmentation-stats">
+                        <p>总分割数量: {item.result.segmentation.segments}</p>
+                      </div>
+                      
+                      {item.result.segmentation.top_segments && (
+                        <div className="top-segments">
+                          <h5>前10个最大分割区域</h5>
+                          <div className="segments-grid">
+                            {item.result.segmentation.top_segments.map((segment) => (
+                              <div key={segment.id} className="segment-item">
+                                <img src={segment.image} alt={`Segment ${segment.id}`} className="segment-image" />
+                                <div className="segment-info">
+                                  <p>区域 {segment.id}</p>
+                                  <p>面积: {Math.round(segment.area)} 像素</p>
+                                  <p>周长: {Math.round(segment.perimeter)} 像素</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 {item.result.styled && (

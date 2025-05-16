@@ -60,6 +60,13 @@ interface ImageProcessingResult {
       segments: number;
       mask: string;
       segmented: string;
+      top_segments?: Array<{
+        id: number;
+        area: number;
+        perimeter: number;
+        bbox: number[];
+        image: string;
+      }>;
     };
     styled?: string;
   };

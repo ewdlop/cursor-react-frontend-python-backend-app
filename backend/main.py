@@ -123,7 +123,8 @@ class ImageProcessingResult(BaseModel):
 # Load image processing models
 try:
     # Load object detection model
-    object_detection_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+    object_detection_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, force_reload=True)
+    object_detection_model.eval()  # Set to evaluation mode
     
     # Load image classification model
     image_processor = AutoImageProcessor.from_pretrained("microsoft/resnet-50")
@@ -160,18 +161,29 @@ def detect_objects(image: Image.Image) -> List[dict]:
     if object_detection_model is None:
         raise HTTPException(status_code=500, detail="Object detection model not loaded")
     
-    results = object_detection_model(image)
-    detections = []
-    
-    for pred in results.xyxy[0]:
-        x1, y1, x2, y2, conf, cls = pred.tolist()
-        detections.append({
-            "class": results.names[int(cls)],
-            "confidence": float(conf),
-            "bbox": [float(x1), float(y1), float(x2), float(y2)]
-        })
-    
-    return detections
+    try:
+        # Convert PIL Image to RGB if it's not
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Run inference
+        results = object_detection_model(image)
+        
+        # Process results
+        detections = []
+        for pred in results.xyxy[0]:
+            x1, y1, x2, y2, conf, cls = pred.tolist()
+            if conf > 0.25:  # Only include detections with confidence > 25%
+                detections.append({
+                    "class": results.names[int(cls)],
+                    "confidence": float(conf),
+                    "bbox": [float(x1), float(y1), float(x2), float(y2)]
+                })
+        
+        return detections
+    except Exception as e:
+        print(f"Error in object detection: {e}")
+        raise HTTPException(status_code=500, detail=f"Error in object detection: {str(e)}")
 
 def segment_image(image: Image.Image) -> dict:
     # Convert to numpy array
@@ -186,6 +198,9 @@ def segment_image(image: Image.Image) -> dict:
     # Find contours
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
+    # Sort contours by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+    
     # Create mask
     mask = np.zeros_like(gray)
     cv2.drawContours(mask, contours, -1, 255, -1)
@@ -193,10 +208,36 @@ def segment_image(image: Image.Image) -> dict:
     # Apply mask to original image
     segmented = cv2.bitwise_and(img_array, img_array, mask=mask)
     
+    # Get top 10 segments
+    top_segments = []
+    for i, contour in enumerate(contours[:10]):
+        # Create a mask for this segment
+        segment_mask = np.zeros_like(gray)
+        cv2.drawContours(segment_mask, [contour], -1, 255, -1)
+        
+        # Apply mask to original image
+        segment = cv2.bitwise_and(img_array, img_array, mask=segment_mask)
+        
+        # Calculate area and perimeter
+        area = cv2.contourArea(contour)
+        perimeter = cv2.arcLength(contour, True)
+        
+        # Get bounding box
+        x, y, w, h = cv2.boundingRect(contour)
+        
+        top_segments.append({
+            "id": i + 1,
+            "area": float(area),
+            "perimeter": float(perimeter),
+            "bbox": [int(x), int(y), int(w), int(h)],
+            "image": "data:image/jpeg;base64," + encode_image(Image.fromarray(segment))
+        })
+    
     return {
         "segments": len(contours),
         "mask": Image.fromarray(mask),
-        "segmented": Image.fromarray(segmented)
+        "segmented": Image.fromarray(segmented),
+        "top_segments": top_segments
     }
 
 def transfer_style(image: Image.Image) -> Image.Image:

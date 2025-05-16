@@ -381,4 +381,117 @@
 .feature-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.detection-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: #f8f9fa;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.detection-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.detection-item:last-child {
+  border-bottom: none;
+}
+
+.detection-class {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.detection-confidence {
+  background: #e9ecef;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.segmentation-results {
+  margin-top: 1rem;
+}
+
+.segmentation-main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.segmentation-image,
+.segmentation-mask {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.segmentation-image h5,
+.segmentation-mask h5 {
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+}
+
+.segmentation-stats {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.segmentation-stats p {
+  margin: 0;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.top-segments {
+  margin-top: 1rem;
+}
+
+.top-segments h5 {
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+}
+
+.segments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.segment-item {
+  background: #f8f9fa;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segment-image {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+}
+
+.segment-info {
+  padding: 0.75rem;
+}
+
+.segment-info p {
+  margin: 0.25rem 0;
+  color: #2c3e50;
+  font-size: 0.9rem;
+}
+
+.segment-info p:first-child {
+  font-weight: 500;
+  color: #2c3e50;
 } 
