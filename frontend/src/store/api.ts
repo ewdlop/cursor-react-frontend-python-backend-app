@@ -41,6 +41,32 @@ interface TextAnalysisResponse {
   };
 }
 
+interface ImageProcessingRequest {
+  file: File;
+  features: string[];
+}
+
+interface ImageProcessingResult {
+  id: string;
+  image_url: string;
+  result: {
+    enhanced?: string;
+    detections?: Array<{
+      class: string;
+      confidence: number;
+      bbox: number[];
+    }>;
+    segmentation?: {
+      segments: number;
+      mask: string;
+      segmented: string;
+    };
+    styled?: string;
+  };
+  timestamp: string;
+  username: string;
+}
+
 export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: 'http://localhost:8000/api',
@@ -52,7 +78,7 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Analysis', 'User'],
+  tagTypes: ['Analysis', 'User', 'Image'],
   endpoints: (builder) => ({
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (credentials) => ({
@@ -121,6 +147,24 @@ export const api = createApi({
       query: () => '/nlp/history',
       providesTags: ['Analysis'],
     }),
+    processImage: builder.mutation<ImageProcessingResult, ImageProcessingRequest>({
+      query: ({ file, features }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        features.forEach(feature => formData.append('features', feature));
+        
+        return {
+          url: '/image/process',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['Image'],
+    }),
+    getImageHistory: builder.query<ImageProcessingResult[], void>({
+      query: () => '/image/history',
+      providesTags: ['Image'],
+    }),
   }),
 });
 
@@ -132,4 +176,6 @@ export const {
   useGetUserStatsQuery,
   useAnalyzeTextMutation,
   useGetAnalysisHistoryQuery,
+  useProcessImageMutation,
+  useGetImageHistoryQuery,
 } = api; 

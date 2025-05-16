@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
@@ -26,6 +27,13 @@ from langdetect import detect, LangDetectException
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+import cv2
+from PIL import Image
+import io
+import torch
+from torchvision import transforms
+from transformers import AutoImageProcessor, AutoModelForImageClassification
+import base64
 
 # Download required NLTK data
 nltk.download('punkt')
@@ -100,6 +108,109 @@ class UserStats(BaseModel):
     today: int
     week: int
     total: int
+
+# Image Processing Models
+class ImageProcessingRequest(BaseModel):
+    features: List[str]
+
+class ImageProcessingResult(BaseModel):
+    id: str
+    image_url: str
+    result: dict
+    timestamp: datetime
+    username: str
+
+# Load image processing models
+try:
+    # Load object detection model
+    object_detection_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+    
+    # Load image classification model
+    image_processor = AutoImageProcessor.from_pretrained("microsoft/resnet-50")
+    image_classification_model = AutoModelForImageClassification.from_pretrained("microsoft/resnet-50")
+except Exception as e:
+    print(f"Error loading models: {e}")
+    object_detection_model = None
+    image_processor = None
+    image_classification_model = None
+
+# Image processing functions
+def enhance_image(image: Image.Image) -> Image.Image:
+    # Convert to numpy array
+    img_array = np.array(image)
+    
+    # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    lab = cv2.cvtColor(img_array, cv2.COLOR_RGB2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+    cl = clahe.apply(l)
+    enhanced_lab = cv2.merge((cl,a,b))
+    enhanced_img = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2RGB)
+    
+    # Denoise
+    denoised = cv2.fastNlMeansDenoisingColored(enhanced_img, None, 10, 10, 7, 21)
+    
+    # Sharpen
+    kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+    sharpened = cv2.filter2D(denoised, -1, kernel)
+    
+    return Image.fromarray(sharpened)
+
+def detect_objects(image: Image.Image) -> List[dict]:
+    if object_detection_model is None:
+        raise HTTPException(status_code=500, detail="Object detection model not loaded")
+    
+    results = object_detection_model(image)
+    detections = []
+    
+    for pred in results.xyxy[0]:
+        x1, y1, x2, y2, conf, cls = pred.tolist()
+        detections.append({
+            "class": results.names[int(cls)],
+            "confidence": float(conf),
+            "bbox": [float(x1), float(y1), float(x2), float(y2)]
+        })
+    
+    return detections
+
+def segment_image(image: Image.Image) -> dict:
+    # Convert to numpy array
+    img_array = np.array(image)
+    
+    # Convert to grayscale
+    gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+    
+    # Apply threshold
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    
+    # Find contours
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Create mask
+    mask = np.zeros_like(gray)
+    cv2.drawContours(mask, contours, -1, 255, -1)
+    
+    # Apply mask to original image
+    segmented = cv2.bitwise_and(img_array, img_array, mask=mask)
+    
+    return {
+        "segments": len(contours),
+        "mask": Image.fromarray(mask),
+        "segmented": Image.fromarray(segmented)
+    }
+
+def transfer_style(image: Image.Image) -> Image.Image:
+    # Simple style transfer using OpenCV
+    # Convert to numpy array
+    img_array = np.array(image)
+    
+    # Apply artistic filter
+    stylized = cv2.stylization(img_array, sigma_s=60, sigma_r=0.4)
+    
+    # Apply edge-preserving filter
+    edge_preserved = cv2.edgePreservingFilter(stylized, flags=1, sigma_s=60, sigma_r=0.4)
+    
+    return Image.fromarray(edge_preserved)
 
 # 验证用户
 def verify_password(plain_password, hashed_password):
@@ -414,6 +525,73 @@ async def get_user_stats(current_user: User = Depends(get_current_user)):
     })
     
     return UserStats(today=today, week=week, total=total)
+
+# Image processing endpoint
+@app.post("/api/image/process", response_model=ImageProcessingResult)
+async def process_image(
+    file: UploadFile = File(...),
+    features: List[str] = ["basic"],
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        # Read and validate image
+        contents = await file.read()
+        image = Image.open(io.BytesIO(contents))
+        
+        # Process image based on selected features
+        result = {}
+        
+        if "enhancement" in features:
+            enhanced = enhance_image(image)
+            result["enhanced"] = "data:image/jpeg;base64," + encode_image(enhanced)
+        
+        if "detection" in features:
+            result["detections"] = detect_objects(image)
+        
+        if "segmentation" in features:
+            segmented = segment_image(image)
+            result["segmentation"] = {
+                "segments": segmented["segments"],
+                "mask": "data:image/jpeg;base64," + encode_image(segmented["mask"]),
+                "segmented": "data:image/jpeg;base64," + encode_image(segmented["segmented"])
+            }
+        
+        if "style" in features:
+            styled = transfer_style(image)
+            result["styled"] = "data:image/jpeg;base64," + encode_image(styled)
+        
+        # Save result to database
+        result_dict = {
+            "image_url": "data:image/jpeg;base64," + encode_image(image),
+            "result": result,
+            "timestamp": datetime.utcnow(),
+            "username": current_user.username
+        }
+        
+        result = await db.image_results.insert_one(result_dict)
+        result_dict["id"] = str(result.inserted_id)
+        
+        return ImageProcessingResult(**result_dict)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def encode_image(image: Image.Image) -> str:
+    buffered = io.BytesIO()
+    image.save(buffered, format="JPEG")
+    return base64.b64encode(buffered.getvalue()).decode()
+
+# Get image processing history
+@app.get("/api/image/history", response_model=List[ImageProcessingResult])
+async def get_image_history(
+    current_user: User = Depends(get_current_user),
+    limit: int = 10
+):
+    results = await db.image_results.find(
+        {"username": current_user.username}
+    ).sort("timestamp", -1).limit(limit).to_list(length=limit)
+    
+    return [ImageProcessingResult(**{**result, "id": str(result["_id"])}) for result in results]
 
 @app.on_event("startup")
 async def startup_db_client():
