@@ -8,6 +8,13 @@ const ImageProcessing: React.FC = () => {
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(['basic']);
   const [error, setError] = useState<string>('');
+  const [basicSettings, setBasicSettings] = useState({
+    brightness: 1.0,
+    hue: 1.0,
+    saturation: 1.0,
+    rotation: 0,
+    flip: undefined as 'horizontal' | 'vertical' | undefined
+  });
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   
   const [processImage, { isLoading }] = useProcessImageMutation();
@@ -33,6 +40,13 @@ const ImageProcessing: React.FC = () => {
     );
   };
 
+  const handleBasicSettingChange = (setting: string, value: number | string | undefined) => {
+    setBasicSettings(prev => ({
+      ...prev,
+      [setting]: value
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
@@ -45,13 +59,11 @@ const ImageProcessing: React.FC = () => {
     try {
       const result = await processImage({
         file: selectedFile,
-        features: selectedFeatures
+        features: selectedFeatures,
+        ...basicSettings
       }).unwrap();
       
-      // Handle successful processing
       console.log('Processing result:', result);
-      
-      // Clear any previous errors
       setError('');
       
     } catch (err: any) {
@@ -89,8 +101,82 @@ const ImageProcessing: React.FC = () => {
           </div>
         )}
 
+        <div className="basic-settings">
+          <h3>基本调整：</h3>
+          <div className="settings-grid">
+            <div className="setting-item">
+              <label>亮度：</label>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={basicSettings.brightness}
+                onChange={(e) => handleBasicSettingChange('brightness', parseFloat(e.target.value))}
+                disabled={isLoading || !selectedFile}
+              />
+              <span>{basicSettings.brightness.toFixed(1)}</span>
+            </div>
+            
+            <div className="setting-item">
+              <label>色相：</label>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={basicSettings.hue}
+                onChange={(e) => handleBasicSettingChange('hue', parseFloat(e.target.value))}
+                disabled={isLoading || !selectedFile}
+              />
+              <span>{basicSettings.hue.toFixed(1)}</span>
+            </div>
+            
+            <div className="setting-item">
+              <label>饱和度：</label>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={basicSettings.saturation}
+                onChange={(e) => handleBasicSettingChange('saturation', parseFloat(e.target.value))}
+                disabled={isLoading || !selectedFile}
+              />
+              <span>{basicSettings.saturation.toFixed(1)}</span>
+            </div>
+            
+            <div className="setting-item">
+              <label>旋转：</label>
+              <input
+                type="range"
+                min="0"
+                max="360"
+                step="1"
+                value={basicSettings.rotation}
+                onChange={(e) => handleBasicSettingChange('rotation', parseInt(e.target.value))}
+                disabled={isLoading || !selectedFile}
+              />
+              <span>{basicSettings.rotation}°</span>
+            </div>
+            
+            <div className="setting-item">
+              <label>翻转：</label>
+              <select
+                value={basicSettings.flip || ''}
+                onChange={(e) => handleBasicSettingChange('flip', e.target.value || undefined)}
+                disabled={isLoading || !selectedFile}
+              >
+                <option value="">无</option>
+                <option value="horizontal">水平</option>
+                <option value="vertical">垂直</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div className="feature-selection">
-          <h3>选择处理特征：</h3>
+          <h3>高级处理：</h3>
           <div className="feature-buttons">
             <button
               type="button"
@@ -149,6 +235,40 @@ const ImageProcessing: React.FC = () => {
             {history.map((item) => (
               <div key={item.id} className="history-item">
                 <img src={item.image_url} alt="Original" className="history-image" />
+                
+                {/* Basic Processing Results */}
+                {item.result.brightness && (
+                  <div className="result-item">
+                    <h4>亮度调整</h4>
+                    <img src={item.result.brightness} alt="Brightness" className="result-image" />
+                  </div>
+                )}
+                {item.result.hue && (
+                  <div className="result-item">
+                    <h4>色相调整</h4>
+                    <img src={item.result.hue} alt="Hue" className="result-image" />
+                  </div>
+                )}
+                {item.result.saturation && (
+                  <div className="result-item">
+                    <h4>饱和度调整</h4>
+                    <img src={item.result.saturation} alt="Saturation" className="result-image" />
+                  </div>
+                )}
+                {item.result.rotation && (
+                  <div className="result-item">
+                    <h4>旋转</h4>
+                    <img src={item.result.rotation} alt="Rotation" className="result-image" />
+                  </div>
+                )}
+                {item.result.flip && (
+                  <div className="result-item">
+                    <h4>翻转</h4>
+                    <img src={item.result.flip} alt="Flip" className="result-image" />
+                  </div>
+                )}
+
+                {/* Advanced Processing Results */}
                 {item.result.enhanced && (
                   <div className="result-item">
                     <h4>增强结果</h4>

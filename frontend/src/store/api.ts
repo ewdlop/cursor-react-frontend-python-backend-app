@@ -44,12 +44,22 @@ interface TextAnalysisResponse {
 interface ImageProcessingRequest {
   file: File;
   features: string[];
+  brightness?: number;
+  hue?: number;
+  saturation?: number;
+  rotation?: number;
+  flip?: 'horizontal' | 'vertical';
 }
 
 interface ImageProcessingResult {
   id: string;
   image_url: string;
   result: {
+    brightness?: string;
+    hue?: string;
+    saturation?: string;
+    rotation?: string;
+    flip?: string;
     enhanced?: string;
     detections?: Array<{
       class: string;

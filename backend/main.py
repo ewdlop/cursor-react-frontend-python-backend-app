@@ -28,7 +28,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import cv2
-from PIL import Image
+from PIL import Image, ImageEnhance
 import io
 import torch
 from torchvision import transforms
@@ -122,15 +122,24 @@ class ImageProcessingResult(BaseModel):
 
 # Load image processing models
 try:
-    # Load object detection model
+    print("Loading YOLOv5 model...")
     object_detection_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, force_reload=True)
     object_detection_model.eval()  # Set to evaluation mode
+    print("YOLOv5 model loaded successfully")
     
-    # Load image classification model
+    print("Loading image classification model...")
     image_processor = AutoImageProcessor.from_pretrained("microsoft/resnet-50")
     image_classification_model = AutoModelForImageClassification.from_pretrained("microsoft/resnet-50")
+    print("Image classification model loaded successfully")
+except ImportError as e:
+    print(f"Error importing required packages: {e}")
+    print("Please make sure all dependencies are installed. Run: pip install -r requirements.txt")
+    object_detection_model = None
+    image_processor = None
+    image_classification_model = None
 except Exception as e:
     print(f"Error loading models: {e}")
+    print("Please check your internet connection and try again")
     object_detection_model = None
     image_processor = None
     image_classification_model = None
@@ -252,6 +261,41 @@ def transfer_style(image: Image.Image) -> Image.Image:
     edge_preserved = cv2.edgePreservingFilter(stylized, flags=1, sigma_s=60, sigma_r=0.4)
     
     return Image.fromarray(edge_preserved)
+
+def adjust_brightness(image: Image.Image, factor: float) -> Image.Image:
+    """Adjust image brightness by a factor."""
+    enhancer = ImageEnhance.Brightness(image)
+    return enhancer.enhance(factor)
+
+def adjust_hue(image: Image.Image, factor: float) -> Image.Image:
+    """Adjust image hue by a factor."""
+    # Convert to HSV
+    img_array = np.array(image)
+    hsv = cv2.cvtColor(img_array, cv2.COLOR_RGB2HSV)
+    
+    # Adjust hue
+    hsv[:,:,0] = (hsv[:,:,0] * factor) % 180
+    
+    # Convert back to RGB
+    adjusted = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+    return Image.fromarray(adjusted)
+
+def adjust_saturation(image: Image.Image, factor: float) -> Image.Image:
+    """Adjust image saturation by a factor."""
+    enhancer = ImageEnhance.Color(image)
+    return enhancer.enhance(factor)
+
+def rotate_image(image: Image.Image, angle: float) -> Image.Image:
+    """Rotate image by specified angle."""
+    return image.rotate(angle, expand=True, resample=Image.BICUBIC)
+
+def flip_image(image: Image.Image, direction: str) -> Image.Image:
+    """Flip image horizontally or vertically."""
+    if direction == 'horizontal':
+        return image.transpose(Image.FLIP_LEFT_RIGHT)
+    elif direction == 'vertical':
+        return image.transpose(Image.FLIP_TOP_BOTTOM)
+    return image
 
 # 验证用户
 def verify_password(plain_password, hashed_password):
@@ -572,6 +616,11 @@ async def get_user_stats(current_user: User = Depends(get_current_user)):
 async def process_image(
     file: UploadFile = File(...),
     features: List[str] = ["basic"],
+    brightness: Optional[float] = None,
+    hue: Optional[float] = None,
+    saturation: Optional[float] = None,
+    rotation: Optional[float] = None,
+    flip: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
     try:
@@ -582,6 +631,23 @@ async def process_image(
         # Process image based on selected features
         result = {}
         
+        # Basic image processing
+        if brightness is not None:
+            result["brightness"] = "data:image/jpeg;base64," + encode_image(adjust_brightness(image, brightness))
+        
+        if hue is not None:
+            result["hue"] = "data:image/jpeg;base64," + encode_image(adjust_hue(image, hue))
+        
+        if saturation is not None:
+            result["saturation"] = "data:image/jpeg;base64," + encode_image(adjust_saturation(image, saturation))
+        
+        if rotation is not None:
+            result["rotation"] = "data:image/jpeg;base64," + encode_image(rotate_image(image, rotation))
+        
+        if flip is not None:
+            result["flip"] = "data:image/jpeg;base64," + encode_image(flip_image(image, flip))
+        
+        # Advanced features
         if "enhancement" in features:
             enhanced = enhance_image(image)
             result["enhanced"] = "data:image/jpeg;base64," + encode_image(enhanced)
