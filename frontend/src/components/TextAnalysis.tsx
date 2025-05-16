@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useAnalyzeTextMutation } from '../store/api';
+import { useAnalyzeTextMutation, useGetAnalysisHistoryQuery } from '../store/api';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
+import '../styles/components.css';
 
 interface Entity {
   text: string;
@@ -24,7 +25,7 @@ interface Keyword {
 }
 
 interface Dependency {
-  text: string;
+  word: string;
   dep: string;
   head: string;
 }
@@ -97,32 +98,34 @@ const TextAnalysis: React.FC = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string>('');
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(['basic']);
-  const [analyzeText, { isLoading }] = useAnalyzeTextMutation();
+  const [showJson, setShowJson] = useState(false);
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  
+  const [analyzeText, { isLoading }] = useAnalyzeTextMutation();
+  const { data: history } = useGetAnalysisHistoryQuery();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setResult(null);
-
     if (!text.trim()) {
-      setError('请输入要分析的文本');
+      setError('请输入文本');
       return;
     }
 
+    setError('');
+
     try {
-      const response = await analyzeText({
+      const result = await analyzeText({
         text,
         features: selectedFeatures,
-        compare_text: compareText
+        compare_text: compareText.trim() || undefined
       }).unwrap();
-      setResult(response);
+      
+      console.log('Analysis result:', result);
+      setResult(result);
+      
     } catch (err: any) {
-      if (err.data?.detail) {
-        setError(err.data.detail);
-      } else {
-        setError('分析失败，请重试');
-      }
+      console.error('Analysis error:', err);
+      setError(err.data?.detail || '分析失败，请重试');
     }
   };
 
@@ -140,36 +143,36 @@ const TextAnalysis: React.FC = () => {
 
   return (
     <div className="text-analysis-container">
-      <h2>文本分析</h2>
+      <h2>NLP 分析</h2>
       <form onSubmit={handleSubmit} className="analysis-form">
         {error && <div className="error">{error}</div>}
+        
         <div className="form-group">
-          <label htmlFor="text">输入文本：</label>
+          <label htmlFor="text">文本：</label>
           <textarea
             id="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="请输入要分析的文本..."
-            required
+            placeholder="输入要分析的文本..."
             disabled={isLoading}
+            rows={6}
           />
         </div>
 
-        {selectedFeatures.includes('similarity') && (
-          <div className="form-group">
-            <label htmlFor="compare-text">比较文本：</label>
-            <textarea
-              id="compare-text"
-              value={compareText}
-              onChange={(e) => setCompareText(e.target.value)}
-              placeholder="请输入要比较的文本..."
-              disabled={isLoading}
-            />
-          </div>
-        )}
-        
+        <div className="form-group">
+          <label htmlFor="compare-text">比较文本（可选）：</label>
+          <textarea
+            id="compare-text"
+            value={compareText}
+            onChange={(e) => setCompareText(e.target.value)}
+            placeholder="输入要比较的文本..."
+            disabled={isLoading}
+            rows={4}
+          />
+        </div>
+
         <div className="feature-selection">
-          <h3>选择分析特征：</h3>
+          <h3>分析特征：</h3>
           <div className="feature-buttons">
             <button
               type="button"
@@ -270,8 +273,12 @@ const TextAnalysis: React.FC = () => {
           </div>
         </div>
 
-        <button type="submit" disabled={isLoading || !text.trim()} className="submit-button">
-          {isLoading ? '分析中...' : '分析文本'}
+        <button 
+          type="submit" 
+          disabled={isLoading}
+          className="submit-button"
+        >
+          {isLoading ? '分析中...' : '开始分析'}
         </button>
       </form>
 
@@ -477,6 +484,116 @@ const TextAnalysis: React.FC = () => {
               <p>置信度：{(result.result.text_classification.confidence * 100).toFixed(2)}%</p>
             </div>
           )}
+        </div>
+      )}
+
+      {history && history.length > 0 && (
+        <div className="history-section">
+          <h3>分析历史</h3>
+          <div className="view-toggle">
+            <button
+              type="button"
+              className={`view-button ${!showJson ? 'active' : ''}`}
+              onClick={() => setShowJson(false)}
+            >
+              可视化视图
+            </button>
+            <button
+              type="button"
+              className={`view-button ${showJson ? 'active' : ''}`}
+              onClick={() => setShowJson(true)}
+            >
+              JSON视图
+            </button>
+          </div>
+          <div className="history-list">
+            {history.map((item) => (
+              <div key={item.id} className="history-item">
+                <div className="history-header">
+                  <p className="history-text">{item.text}</p>
+                  <p className="history-time">{new Date(item.timestamp).toLocaleString()}</p>
+                </div>
+                {showJson ? (
+                  <pre className="json-view">
+                    {JSON.stringify(item.result, null, 2)}
+                  </pre>
+                ) : (
+                  <div className="result-content">
+                    {item.result.entities && (
+                      <div className="result-item">
+                        <h4>实体识别：</h4>
+                        <ul>
+                          {item.result.entities.map(([text, label]: [string, string], index: number) => (
+                            <li key={index}>{text} ({label})</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {item.result.tokens && (
+                      <div className="result-item">
+                        <h4>分词结果：</h4>
+                        <p>{item.result.tokens.join(' ')}</p>
+                      </div>
+                    )}
+                    
+                    {item.result.pos_tags && (
+                      <div className="result-item">
+                        <h4>词性标注：</h4>
+                        <ul>
+                          {item.result.pos_tags.map(([word, tag]: [string, string], index: number) => (
+                            <li key={index}>{word} ({tag})</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {item.result.sentiment && (
+                      <div className="result-item">
+                        <h4>情感分析：</h4>
+                        <p>情感极性：{item.result.sentiment.polarity.toFixed(2)}</p>
+                        <p>主观程度：{item.result.sentiment.subjectivity.toFixed(2)}</p>
+                      </div>
+                    )}
+                    
+                    {item.result.keywords && (
+                      <div className="result-item">
+                        <h4>关键词：</h4>
+                        <ul>
+                          {item.result.keywords.map(([word, weight]: [string, number], index: number) => (
+                            <li key={index}>{word} ({weight.toFixed(2)})</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {item.result.word_frequency && (
+                      <div className="result-item">
+                        <h4>词频统计：</h4>
+                        <ul>
+                          {Object.entries(item.result.word_frequency).map((entry, index) => {
+                            const [word, freq] = entry as [string, number];
+                            return <li key={index}>{`${word}: ${freq}`}</li>;
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {item.result.dependencies && (
+                      <div className="result-item">
+                        <h4>依存句法：</h4>
+                        <ul>
+                          {item.result.dependencies.map(([word, dep, head]: [string, string, string], index: number) => (
+                            <li key={index}>{`${word} --${dep}--&gt; ${head}`}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
