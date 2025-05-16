@@ -75,9 +75,9 @@ const TextGeneration: React.FC = () => {
   }
 
   return (
-    <div className="text-generation-container">
+    <div className="text-analysis-container">
       <h2>AI 文本生成</h2>
-      <form onSubmit={handleSubmit} className="generation-form">
+      <form onSubmit={handleSubmit} className="analysis-form">
         {error && <div className="error">{error}</div>}
         
         <div className="form-group">
