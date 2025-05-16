@@ -42,6 +42,12 @@ const Navigation: React.FC = () => {
               >
                 AI 绘画
               </Link>
+              <Link 
+                to="/text-generation" 
+                className={location.pathname === '/text-generation' ? 'active' : ''}
+              >
+                AI 写作
+              </Link>
               <div className="nav-user">
                 <span className="username">欢迎, {username}</span>
                 <button onClick={handleLogout} className="logout-button">
