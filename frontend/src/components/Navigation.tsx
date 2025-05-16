@@ -1,15 +1,18 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
+import { logout } from '../store/slices/authSlice';
 
 const Navigation: React.FC = () => {
   const location = useLocation();
+  const dispatch = useDispatch();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const username = useSelector((state: RootState) => state.auth.username);
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  const handleLogout = () => {
+    dispatch(logout());
+  };
 
   return (
     <nav className="main-nav">
@@ -18,18 +21,43 @@ const Navigation: React.FC = () => {
           <Link to="/">AI分析系统</Link>
         </div>
         <div className="nav-links">
-          <Link 
-            to="/nlp" 
-            className={location.pathname === '/nlp' ? 'active' : ''}
-          >
-            NLP分析
-          </Link>
-          <Link 
-            to="/image" 
-            className={location.pathname === '/image' ? 'active' : ''}
-          >
-            图像处理
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link 
+                to="/nlp" 
+                className={location.pathname === '/nlp' ? 'active' : ''}
+              >
+                NLP分析
+              </Link>
+              <Link 
+                to="/image" 
+                className={location.pathname === '/image' ? 'active' : ''}
+              >
+                图像处理
+              </Link>
+              <div className="nav-user">
+                <span className="username">欢迎, {username}</span>
+                <button onClick={handleLogout} className="logout-button">
+                  退出
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Link 
+                to="/login" 
+                className={location.pathname === '/login' ? 'active' : ''}
+              >
+                登录
+              </Link>
+              <Link 
+                to="/register" 
+                className={location.pathname === '/register' ? 'active' : ''}
+              >
+                注册
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

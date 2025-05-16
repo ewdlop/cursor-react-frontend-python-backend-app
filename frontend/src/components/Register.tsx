@@ -1,18 +1,29 @@
 import React, { useState } from 'react';
 import { useRegisterMutation } from '../store/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+
+interface ValidationError {
+  loc: string[];
+  msg: string;
+  type: string;
+}
 
 const Register: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [register] = useRegisterMutation();
+  const [error, setError] = useState<string>('');
+  const [register, { isLoading }] = useRegisterMutation();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!username.trim() || !password.trim() || !confirmPassword.trim()) {
+      setError('请填写所有字段');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('两次输入的密码不一致');
@@ -23,13 +34,24 @@ const Register: React.FC = () => {
       await register({ username, password }).unwrap();
       navigate('/login');
     } catch (err: any) {
-      setError(err.data?.detail || '注册失败，请重试');
+      if (err.data?.detail && Array.isArray(err.data.detail)) {
+        const validationErrors = err.data.detail as ValidationError[];
+        setError(validationErrors.map(error => error.msg).join(', '));
+      } else if (typeof err.data === 'string') {
+        setError(err.data);
+      } else if (err.data?.detail) {
+        setError(err.data.detail);
+      } else if (err.error) {
+        setError(err.error);
+      } else {
+        setError('注册失败，请重试');
+      }
     }
   };
 
   return (
-    <div className="login-container">
-      <form onSubmit={handleSubmit} className="login-form">
+    <div className="auth-container">
+      <form onSubmit={handleSubmit} className="auth-form">
         <h2>注册</h2>
         {error && <div className="error">{error}</div>}
         <div className="form-group">
@@ -62,9 +84,11 @@ const Register: React.FC = () => {
             required
           />
         </div>
-        <button type="submit">注册</button>
-        <div className="form-footer">
-          已有账号？ <a href="/login">立即登录</a>
+        <button type="submit" className="submit-button" disabled={isLoading}>
+          {isLoading ? '注册中...' : '注册'}
+        </button>
+        <div className="auth-links">
+          <Link to="/login">已有账号？立即登录</Link>
         </div>
       </form>
     </div>
