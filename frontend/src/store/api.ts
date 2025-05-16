@@ -84,6 +84,24 @@ interface ImageProcessingResult {
   username: string;
 }
 
+interface ImageGenerationRequest {
+  prompt: string;
+  negative_prompt?: string;
+  numSteps: number;
+  guidanceScale: number;
+  width: number;
+  height: number;
+}
+
+interface ImageGenerationResult {
+  id: string;
+  image_url: string;
+  prompt: string;
+  negative_prompt?: string;
+  timestamp: string;
+  username: string;
+}
+
 export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: 'http://localhost:8000/api',
@@ -182,6 +200,18 @@ export const api = createApi({
       query: () => '/image/history',
       providesTags: ['Image'],
     }),
+    generateImage: builder.mutation<ImageGenerationResult, ImageGenerationRequest>({
+      query: (data) => ({
+        url: '/image/generate',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Image'],
+    }),
+    getGenerationHistory: builder.query<ImageGenerationResult[], void>({
+      query: () => '/image/generation-history',
+      providesTags: ['Image'],
+    }),
   }),
 });
 
@@ -195,4 +225,6 @@ export const {
   useGetAnalysisHistoryQuery,
   useProcessImageMutation,
   useGetImageHistoryQuery,
+  useGenerateImageMutation,
+  useGetGenerationHistoryQuery,
 } = api; 

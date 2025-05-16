@@ -34,6 +34,7 @@ import torch
 from torchvision import transforms
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 import base64
+from diffusers import StableDiffusionPipeline
 
 # Download required NLTK data
 nltk.download('punkt')
@@ -143,6 +144,20 @@ except Exception as e:
     object_detection_model = None
     image_processor = None
     image_classification_model = None
+
+# Load image generation model
+try:
+    print("Loading Stable Diffusion model...")
+    image_generation_model = StableDiffusionPipeline.from_pretrained(
+        "runwayml/stable-diffusion-v1-5",
+        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+    )
+    if torch.cuda.is_available():
+        image_generation_model = image_generation_model.to("cuda")
+    print("Stable Diffusion model loaded successfully")
+except Exception as e:
+    print(f"Error loading Stable Diffusion model: {e}")
+    image_generation_model = None
 
 # Image processing functions
 def enhance_image(image: Image.Image) -> Image.Image:
@@ -708,6 +723,75 @@ async def get_image_history(
     ).sort("timestamp", -1).limit(limit).to_list(length=limit)
     
     return [ImageProcessingResult(**{**result, "id": str(result["_id"])}) for result in results]
+
+class ImageGenerationRequest(BaseModel):
+    prompt: str
+    negative_prompt: Optional[str] = None
+    numSteps: int = 50
+    guidanceScale: float = 7.5
+    width: int = 512
+    height: int = 512
+
+class ImageGenerationResult(BaseModel):
+    id: str
+    image_url: str
+    prompt: str
+    negative_prompt: Optional[str] = None
+    timestamp: datetime
+    username: str
+
+@app.post("/api/image/generate", response_model=ImageGenerationResult)
+async def generate_image(
+    request: ImageGenerationRequest,
+    current_user: User = Depends(get_current_user)
+):
+    if image_generation_model is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Image generation model not loaded"
+        )
+    
+    try:
+        # Generate image
+        image = image_generation_model(
+            prompt=request.prompt,
+            negative_prompt=request.negative_prompt,
+            num_inference_steps=request.numSteps,
+            guidance_scale=request.guidanceScale,
+            width=request.width,
+            height=request.height
+        ).images[0]
+        
+        # Convert to base64
+        image_url = "data:image/jpeg;base64," + encode_image(image)
+        
+        # Save result to database
+        result_dict = {
+            "image_url": image_url,
+            "prompt": request.prompt,
+            "negative_prompt": request.negative_prompt,
+            "timestamp": datetime.utcnow(),
+            "username": current_user.username
+        }
+        
+        result = await db.image_generation_results.insert_one(result_dict)
+        result_dict["id"] = str(result.inserted_id)
+        
+        return ImageGenerationResult(**result_dict)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/image/generation-history", response_model=List[ImageGenerationResult])
+async def get_generation_history(
+    current_user: User = Depends(get_current_user),
+    limit: int = 10
+):
+    results = await db.image_generation_results.find(
+        {"username": current_user.username}
+    ).sort("timestamp", -1).limit(limit).to_list(length=limit)
+    
+    return [ImageGenerationResult(**{**result, "id": str(result["_id"])}) for result in results]
 
 @app.on_event("startup")
 async def startup_db_client():
