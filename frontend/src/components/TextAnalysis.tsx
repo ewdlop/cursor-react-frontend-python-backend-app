@@ -29,14 +29,39 @@ interface Dependency {
   head: string;
 }
 
+interface TextStats {
+  sentence_count: number;
+  word_count: number;
+  unique_words: number;
+  avg_sentence_length: number;
+}
+
 interface AnalysisResult {
-  entities: Entity[];
-  tokens: string[];
-  pos_tags: PosTag[];
-  sentiment?: Sentiment;
-  keywords?: Keyword[];
-  word_frequency?: Record<string, number>;
-  dependencies?: Dependency[];
+  id: string;
+  text: string;
+  result: {
+    entities?: [string, string][];
+    tokens?: string[];
+    pos_tags?: [string, string][];
+    sentiment?: {
+      polarity: number;
+      subjectivity: number;
+    };
+    keywords?: [string, number][];
+    word_frequency?: Record<string, number>;
+    dependencies?: [string, string, string][];
+    // NLTK features
+    sentences?: string[];
+    lemmatized?: string[];
+    nltk_pos_tags?: [string, string][];
+    filtered_words?: string[];
+    bigrams?: [string, string][];
+    trigrams?: [string, string, string][];
+    word_frequency_nltk?: Record<string, number>;
+    text_stats?: TextStats;
+  };
+  timestamp: string;
+  username: string;
 }
 
 const TextAnalysis: React.FC = () => {
@@ -58,43 +83,16 @@ const TextAnalysis: React.FC = () => {
     }
 
     try {
-      console.log('Sending analysis request:', { text, features: selectedFeatures });
-      const response = await analyzeText({ 
+      const response = await analyzeText({
         text,
         features: selectedFeatures
       }).unwrap();
-      
-      console.log('Raw API response:', response);
-      
-      if (!response.result) {
-        console.error('No result in response:', response);
-        setError('分析结果为空');
-        return;
-      }
-
-      // Transform the API response to match the expected types
-      const transformedResult: AnalysisResult = {
-        entities: response.result.entities?.map(([text, label]) => ({ text, label })) || [],
-        tokens: response.result.tokens || [],
-        pos_tags: response.result.pos_tags?.map(([text, pos]) => ({ text, pos })) || [],
-        sentiment: response.result.sentiment,
-        keywords: response.result.keywords?.map(([word, weight]) => ({ word, weight })),
-        word_frequency: response.result.word_frequency,
-        dependencies: response.result.dependencies?.map(([text, dep, head]) => ({ text, dep, head }))
-      };
-      
-      console.log('Transformed result:', transformedResult);
-      setResult(transformedResult);
+      setResult(response);
     } catch (err: any) {
-      console.error('Analysis error:', err);
-      if (typeof err.data === 'string') {
-        setError(err.data);
-      } else if (err.data?.detail) {
+      if (err.data?.detail) {
         setError(err.data.detail);
-      } else if (err.error) {
-        setError(err.error);
       } else {
-        setError('分析失败，请稍后重试');
+        setError('分析失败，请重试');
       }
     }
   };
@@ -171,6 +169,14 @@ const TextAnalysis: React.FC = () => {
             >
               依存句法
             </button>
+            <button
+              type="button"
+              className={`feature-button ${selectedFeatures.includes('nltk') ? 'active' : ''}`}
+              onClick={() => handleFeatureToggle('nltk')}
+              disabled={isLoading}
+            >
+              NLTK分析
+            </button>
           </div>
         </div>
 
@@ -187,85 +193,137 @@ const TextAnalysis: React.FC = () => {
 
       {result && !isLoading && (
         <div className="analysis-results">
-          {selectedFeatures.includes('basic') && (
-            <>
-              <div className="result-section">
-                <h3>实体识别</h3>
-                <ul>
-                  {result.entities.map(({ text, label }, index: number) => (
-                    <li key={`entity-${index}`}>
-                      {text} <span className="entity-label">({label})</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="result-section">
-                <h3>词性标注</h3>
-                <ul>
-                  {result.pos_tags.map(({ text, pos }, index: number) => (
-                    <li key={`pos-${index}`}>
-                      {text} <span className="pos-tag">({pos})</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="result-section">
-                <h3>分词结果</h3>
-                <ul>
-                  {result.tokens.map((token: string, index: number) => (
-                    <li key={`token-${index}`}>{token}</li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          )}
-
-          {selectedFeatures.includes('sentiment') && result.sentiment && (
+          <h3>分析结果：</h3>
+          
+          {result.result.entities && (
             <div className="result-section">
-              <h3>情感分析</h3>
-              <div className="sentiment-info">
-                <p>情感极性: {result.sentiment.polarity.toFixed(2)}</p>
-                <p>主观程度: {result.sentiment.subjectivity.toFixed(2)}</p>
-              </div>
-            </div>
-          )}
-
-          {selectedFeatures.includes('keywords') && result.keywords && result.keywords.length > 0 && (
-            <div className="result-section">
-              <h3>关键词提取</h3>
+              <h4>实体识别：</h4>
               <ul>
-                {result.keywords.map(({ word, weight }, index: number) => (
-                  <li key={`keyword-${index}`}>
-                    {word} <span className="weight-tag">({weight.toFixed(2)})</span>
-                  </li>
+                {result.result.entities.map(([text, label], index) => (
+                  <li key={index}>{text} ({label})</li>
                 ))}
               </ul>
             </div>
           )}
 
-          {selectedFeatures.includes('word_freq') && result.word_frequency && Object.keys(result.word_frequency).length > 0 && (
+          {result.result.sentiment && (
             <div className="result-section">
-              <h3>词频统计</h3>
+              <h4>情感分析：</h4>
+              <p>情感极性：{result.result.sentiment.polarity.toFixed(2)}</p>
+              <p>主观性：{result.result.sentiment.subjectivity.toFixed(2)}</p>
+            </div>
+          )}
+
+          {result.result.keywords && (
+            <div className="result-section">
+              <h4>关键词：</h4>
               <ul>
-                {Object.entries(result.word_frequency).map(([word, freq], index: number) => (
-                  <li key={`freq-${index}`}>
-                    {word} <span className="freq-tag">({freq})</span>
-                  </li>
+                {result.result.keywords.map(([word, weight], index) => (
+                  <li key={index}>{word} ({weight.toFixed(2)})</li>
                 ))}
               </ul>
             </div>
           )}
 
-          {selectedFeatures.includes('dependencies') && result.dependencies && result.dependencies.length > 0 && (
+          {result.result.word_frequency && (
             <div className="result-section">
-              <h3>依存句法分析</h3>
+              <h4>词频统计：</h4>
               <ul>
-                {result.dependencies.map(({ text, dep, head }, index: number) => (
-                  <li key={`dep-${index}`}>
-                    {text} <span className="dep-tag">({dep})</span> → {head}
-                  </li>
+                {Object.entries(result.result.word_frequency).map(([word, freq], index) => (
+                  <li key={index}>{word}: {freq}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.result.dependencies && (
+            <div className="result-section">
+              <h4>依存句法分析：</h4>
+              <ul>
+                {result.result.dependencies.map(([text, dep, head], index) => (
+                  <li key={index}>{text} {'--'}{dep}{'-->'} {head}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* NLTK Results */}
+          {result.result.text_stats && (
+            <div className="result-section">
+              <h4>文本统计：</h4>
+              <ul>
+                <li>句子数量：{result.result.text_stats.sentence_count}</li>
+                <li>单词数量：{result.result.text_stats.word_count}</li>
+                <li>唯一单词数：{result.result.text_stats.unique_words}</li>
+                <li>平均句子长度：{result.result.text_stats.avg_sentence_length.toFixed(2)}</li>
+              </ul>
+            </div>
+          )}
+
+          {result.result.sentences && (
+            <div className="result-section">
+              <h4>句子分割：</h4>
+              <ol>
+                {result.result.sentences.map((sentence, index) => (
+                  <li key={index}>{sentence}</li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {result.result.lemmatized && (
+            <div className="result-section">
+              <h4>词形还原：</h4>
+              <p>{result.result.lemmatized.join(' ')}</p>
+            </div>
+          )}
+
+          {result.result.nltk_pos_tags && (
+            <div className="result-section">
+              <h4>词性标注：</h4>
+              <ul>
+                {result.result.nltk_pos_tags.map(([text, pos], index) => (
+                  <li key={index}>{text} ({pos})</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.result.filtered_words && (
+            <div className="result-section">
+              <h4>停用词过滤：</h4>
+              <p>{result.result.filtered_words.join(' ')}</p>
+            </div>
+          )}
+
+          {result.result.bigrams && (
+            <div className="result-section">
+              <h4>二元语法：</h4>
+              <ul>
+                {result.result.bigrams.map(([word1, word2], index) => (
+                  <li key={index}>{word1} {word2}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.result.trigrams && (
+            <div className="result-section">
+              <h4>三元语法：</h4>
+              <ul>
+                {result.result.trigrams.map(([word1, word2, word3], index) => (
+                  <li key={index}>{word1} {word2} {word3}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.result.word_frequency_nltk && (
+            <div className="result-section">
+              <h4>NLTK词频统计：</h4>
+              <ul>
+                {Object.entries(result.result.word_frequency_nltk).map(([word, freq], index) => (
+                  <li key={index}>{word}: {freq}</li>
                 ))}
               </ul>
             </div>

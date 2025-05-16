@@ -4,13 +4,41 @@ A full-stack application for Chinese text analysis with various NLP features. / 
 
 ## Features / 功能特点
 
-- Text Analysis / 文本分析
-  - Basic Analysis (Tokenization, POS Tagging, Entity Recognition) / 基础分析（分词、词性标注、实体识别）
-  - Sentiment Analysis / 情感分析
-  - Keyword Extraction / 关键词提取
-  - Word Frequency Statistics / 词频统计
-  - Dependency Parsing / 依存句法分析
-- User Authentication / 用户认证
+### Text Analysis / 文本分析
+- Basic Analysis / 基础分析
+  - Tokenization / 分词
+  - POS Tagging / 词性标注
+  - Entity Recognition / 实体识别
+- Sentiment Analysis / 情感分析
+  - Polarity Score / 情感极性
+  - Subjectivity Score / 主观性评分
+- Keyword Extraction / 关键词提取
+  - TF-IDF based / 基于TF-IDF
+  - Weighted Keywords / 带权重的关键词
+- Word Frequency Statistics / 词频统计
+  - Word Count / 词数统计
+  - Frequency Distribution / 频率分布
+- Dependency Parsing / 依存句法分析
+  - Syntactic Dependencies / 句法依存关系
+  - Head-Dependent Relations / 主从关系
+
+### NLTK Features / NLTK功能
+- Text Statistics / 文本统计
+  - Sentence Count / 句子数量
+  - Word Count / 词数统计
+  - Unique Words / 唯一词数
+  - Average Sentence Length / 平均句子长度
+- Sentence Segmentation / 句子分割
+- Lemmatization / 词形还原
+- POS Tagging / 词性标注
+- Stop Word Filtering / 停用词过滤
+- N-gram Analysis / N元语法分析
+  - Bigrams / 二元语法
+  - Trigrams / 三元语法
+- Word Frequency Distribution / 词频分布
+
+### User Features / 用户功能
+- Authentication / 用户认证
   - Login / 登录
   - Registration / 注册
   - Password Change / 修改密码
@@ -33,6 +61,7 @@ A full-stack application for Chinese text analysis with various NLP features. / 
 - spaCy
 - TextBlob
 - jieba
+- NLTK
 
 ## Setup / 安装设置
 
@@ -102,15 +131,15 @@ The API documentation is available at `/docs` when running the backend server. /
 ```
 .
 ├── backend/
-│   ├── main.py
-│   ├── database.py
-│   └── requirements.txt
+│   ├── main.py          # FastAPI application / FastAPI应用
+│   ├── database.py      # MongoDB configuration / MongoDB配置
+│   └── requirements.txt # Python dependencies / Python依赖
 └── frontend/
     ├── src/
-    │   ├── components/
-    │   ├── store/
-    │   └── App.tsx
-    └── package.json
+    │   ├── components/  # React components / React组件
+    │   ├── store/       # Redux store and API / Redux存储和API
+    │   └── App.tsx      # Main application / 主应用
+    └── package.json     # Node.js dependencies / Node.js依赖
 ```
 
 ### Adding New Features / 添加新功能

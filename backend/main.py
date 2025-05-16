@@ -14,6 +14,18 @@ from bson import ObjectId
 from collections import Counter
 from textblob import TextBlob
 import jieba.analyse
+import nltk
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.probability import FreqDist
+from nltk.util import ngrams
+
+# Download required NLTK data
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('averaged_perceptron_tagger')
 
 # Load environment variables
 load_dotenv()
@@ -234,6 +246,45 @@ async def analyze_text(
     # 依存句法分析
     if "dependencies" in request.features:
         analysis["dependencies"] = [(token.text, token.dep_, token.head.text) for token in doc]
+    
+    # NLTK 新增功能
+    if "nltk" in request.features:
+        # 句子分割
+        sentences = sent_tokenize(request.text)
+        analysis["sentences"] = sentences
+        
+        # 词形还原
+        lemmatizer = WordNetLemmatizer()
+        tokens = word_tokenize(request.text)
+        lemmatized = [lemmatizer.lemmatize(token) for token in tokens]
+        analysis["lemmatized"] = lemmatized
+        
+        # 词性标注
+        pos_tags = nltk.pos_tag(tokens)
+        analysis["nltk_pos_tags"] = pos_tags
+        
+        # 停用词过滤
+        stop_words = set(stopwords.words('english'))
+        filtered_words = [word for word in tokens if word.lower() not in stop_words]
+        analysis["filtered_words"] = filtered_words
+        
+        # N-gram 分析
+        bigrams = list(ngrams(tokens, 2))
+        trigrams = list(ngrams(tokens, 3))
+        analysis["bigrams"] = bigrams[:10]  # 只返回前10个
+        analysis["trigrams"] = trigrams[:10]
+        
+        # 词频分布
+        fdist = FreqDist(tokens)
+        analysis["word_frequency_nltk"] = dict(fdist.most_common(10))
+        
+        # 文本统计
+        analysis["text_stats"] = {
+            "sentence_count": len(sentences),
+            "word_count": len(tokens),
+            "unique_words": len(set(tokens)),
+            "avg_sentence_length": len(tokens) / len(sentences) if sentences else 0
+        }
     
     # 保存分析结果
     result_dict = {
