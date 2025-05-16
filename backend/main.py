@@ -684,6 +684,15 @@ async def process_image(
         raise HTTPException(status_code=500, detail=str(e))
 
 def encode_image(image: Image.Image) -> str:
+    """Convert PIL Image to base64 string, handling RGBA images."""
+    # Convert RGBA to RGB if necessary
+    if image.mode == 'RGBA':
+        # Create a white background
+        background = Image.new('RGB', image.size, (255, 255, 255))
+        # Paste the image on the background using alpha channel as mask
+        background.paste(image, mask=image.split()[3])
+        image = background
+    
     buffered = io.BytesIO()
     image.save(buffered, format="JPEG")
     return base64.b64encode(buffered.getvalue()).decode()

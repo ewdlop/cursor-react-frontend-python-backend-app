@@ -43,7 +43,7 @@ opencv-python==4.8.1.78
 packaging==25.0
 pandas==2.2.3
 passlib==1.7.4
-Pillow==10.1.0
+Pillow==9.5.0
 preshed==3.0.9
 psutil==7.0.0
 py-cpuinfo==9.0.0
